@@ -1,0 +1,18 @@
+[package]
+name = "leierkasten-client"
+version = "0.1.0"
+authors = ["Julian Wiesler <wiesleju@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tokio-tungstenite = "0.11.0"
+tokio = { version = "0.2.22", features = ["full"] }
+cpal = "0.12.1"
+futures-util = { version = "0.3", default-features = false, features = ["async-await", "sink", "std"] }
+audiopus = "0.2.0"
+log = "0.4.0"
+env_logger = "0.7.1"
+serde = { version = "1.0.116", features = ["derive"] }
+serde_json = "1.0"
