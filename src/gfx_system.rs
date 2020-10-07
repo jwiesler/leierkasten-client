@@ -111,7 +111,7 @@ impl System {
             encoder.flush(&mut render_sys.device);
             render_sys.swap_buffers();
             render_sys.device.cleanup();
-            tokio::time::delay_for(Duration::from_millis(20)).await;
+            tokio::time::delay_for(Duration::from_millis(25)).await;
         }
     }
 }

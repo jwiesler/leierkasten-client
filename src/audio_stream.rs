@@ -1,5 +1,3 @@
-use tokio::sync::mpsc::Receiver;
-
 use cpal::traits::{DeviceTrait, HostTrait};
 use cpal::Stream;
 
@@ -18,7 +16,10 @@ impl Chunk {
     }
 }
 
-pub fn create_stream(mut receiver: Receiver<Vec<f32>>) -> Stream {
+/// Essentially an endless iterator, returning None means currently no data
+pub trait AudioSource: Iterator<Item = Vec<f32>> + Send {}
+
+pub fn create_stream<F: AudioSource + 'static>(mut source: F) -> Stream {
     let host = cpal::default_host();
     let device = host
         .default_output_device()
@@ -31,24 +32,28 @@ pub fn create_stream(mut receiver: Receiver<Vec<f32>>) -> Stream {
     let mut current_chunk = None;
 
     let mut last_keep_up = true;
+
+    // let callback = ;
+
     device
         .build_output_stream(
             &config.into(),
-            move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
-                let mut data = data;
-                while !data.is_empty() {
+            move |mut data: &mut [f32], _: &cpal::OutputCallbackInfo| {
+                last_keep_up = loop {
+                    if data.is_empty() {
+                        break true;
+                    }
                     let mut chunk = match current_chunk.take() {
-                        None => match receiver.try_recv() {
-                            Ok(chunk) => Chunk::new(chunk),
-                            Err(_) => {
+                        None => match source.next() {
+                            Some(chunk) => Chunk::new(chunk),
+                            None => {
                                 if last_keep_up {
-                                    last_keep_up = false;
                                     warn!("Can't keep up");
                                 }
                                 for x in data {
                                     *x = 0.0;
                                 }
-                                return;
+                                break false;
                             }
                         },
                         Some(chunk) => chunk,
@@ -63,8 +68,7 @@ pub fn create_stream(mut receiver: Receiver<Vec<f32>>) -> Stream {
                         current_chunk = Some(chunk);
                     }
                     data = new_data;
-                }
-                last_keep_up = true;
+                };
             },
             err_fn,
         )
