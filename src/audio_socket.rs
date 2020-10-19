@@ -48,8 +48,16 @@ pub enum State {
 
 #[derive(Deserialize)]
 pub struct StreamStartMessage {
-    pub timestamp: u64,
-    pub duration: Option<u64>,
+    /// Offset in samples from `start_timestamp_us`
+    pub offset_samples: u64,
+
+    /// Start and end timestamps
+    pub start_timestamp_us: u64,
+    pub end_timestamp_us: Option<u64>,
+
+    /// Maximum duration this resource will play
+    pub duration_us: Option<u64>,
+
     pub name: String,
 }
 

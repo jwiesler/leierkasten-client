@@ -11,7 +11,7 @@ use imgui::{Condition, ImStr, PlotLines, ProgressBar, Window};
 use tokio::sync::mpsc::Sender;
 use tokio::task::JoinHandle;
 
-use crate::audio_client::{PlayingInfo, SAMPLE_RATE};
+use crate::audio_client::{PlayingInfo, SAMPLE_RATE, TIME_BASE};
 use crate::audio_socket::{AudioMessage, AudioSocket};
 use crate::token::*;
 use crate::{audio_socket, format, ADDRESS};
@@ -120,27 +120,28 @@ impl Player {
                 if self.token.is_canceled() {
                     ui.text(im_str!("Disconnecting..."));
                 } else {
-                    let timestamp = self.player_state.timestamp();
+                    let timestamp_us = self.player_state.timestamp() * TIME_BASE / SAMPLE_RATE;
 
                     struct Current<'a> {
                         name: &'a str,
                         timestamp: i64,
-                        duration: Option<i64>,
+                        duration_s: Option<i64>,
                     }
 
                     let (current, progress) = match info.item.as_ref() {
                         Some(item) => {
-                            let (duration, progress) = match item.duration.clone() {
-                                Some(duration) => (
-                                    Some((duration / SAMPLE_RATE) as i64),
-                                    timestamp as f32 / duration as f32,
+                            let timestamp_us = item.start_timestamp_us + timestamp_us;
+                            let (duration_s, progress) = match item.end_timestamp_us.clone() {
+                                Some(end_timestamp_us) => (
+                                    Some((end_timestamp_us / TIME_BASE) as i64),
+                                    timestamp_us as f32 / end_timestamp_us as f32,
                                 ),
                                 None => (None, 0.0),
                             };
                             let current = Current {
                                 name: item.name.as_str(),
-                                timestamp: (timestamp / SAMPLE_RATE) as i64,
-                                duration,
+                                timestamp: (timestamp_us / TIME_BASE) as i64,
+                                duration_s,
                             };
                             (Some(current), progress)
                         }
@@ -164,7 +165,7 @@ impl Player {
                     if let Some(current) = current.as_ref() {
                         ui.text(format::format_timestamp(current.timestamp));
 
-                        if let Some(duration) = current.duration {
+                        if let Some(duration) = current.duration_s {
                             ui.same_line(0.0);
                             ui.text(im_str!("-"));
                             ui.same_line(0.0);

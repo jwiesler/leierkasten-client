@@ -12,13 +12,8 @@ use crate::audio_socket::StreamStartMessage;
 use crate::audio_stream::AudioSource;
 use crate::gui::PlayerState;
 
-pub struct PlayingItem {
-    pub name: String,
-    pub duration: Option<u64>,
-}
-
 pub struct PlayingInfo {
-    pub item: Option<PlayingItem>,
+    pub item: Option<StreamStartMessage>,
     pub buffering: bool,
 }
 
@@ -46,6 +41,7 @@ impl AudioClient {
 
 pub const SAMPLES_PER_FRAME: u64 = 960;
 pub const SAMPLE_RATE: u64 = 48000;
+pub const TIME_BASE: u64 = 1000000;
 
 impl AudioClient {
     fn update_timestamp(&mut self, timestamp: u64) {
@@ -76,14 +72,12 @@ impl AudioClient {
     }
 
     fn handle_new_resource(&mut self, message: StreamStartMessage) {
+        let offset_sample = message.offset_samples;
         *self.context.state() = PlayingInfo {
-            item: Some(PlayingItem {
-                name: message.name,
-                duration: message.duration,
-            }),
+            item: Some(message),
             buffering: self.buffering,
         };
-        self.update_timestamp(message.timestamp);
+        self.update_timestamp(offset_sample);
     }
 
     fn decode_one(&mut self) -> Option<Vec<f32>> {
